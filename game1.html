@@ -455,19 +455,21 @@
 
   // Data pemain dari dashboard
   const playerName = localStorage.getItem('playerName') || 'Teman';
-  const currentGameSession = JSON.parse(localStorage.getItem('currentGameSession') || '{}');
-
   const gameStartedAt = new Date().toISOString();
 
-  currentGameSession.startedAt = gameStartedAt;
+  const gameSession = {
+    playerName: playerName,
+    gameName: 'Memasangkan Permainan Tradisional',
+    startedAt: gameStartedAt
+  };
 
   localStorage.setItem(
     'currentGameSession',
-    JSON.stringify(currentGameSession)
+    JSON.stringify(gameSession)
   );
 
   console.log('Nama pemain:', playerName);
-  console.log('Game yang dipilih:', currentGameSession.gameName);
+  console.log('Game yang dipilih:', gameSession.gameName);
   console.log('Waktu mulai:', gameStartedAt);
 
   // Data waktu selesai dan durasi
@@ -478,8 +480,8 @@ function saveGameCompletion() {
     localStorage.getItem('currentGameSession') || '{}'
   );
 
-  currentGameSession.playerName = playerName;
-  currentGameSession.gameName = 'Memasangkan Permainan Tradisional';
+  gameSession.playerName = playerName;
+  gameSession.gameName = 'Memasangkan Permainan Tradisional';
   session.finishedAt = finishedAt;
 
   if (session.startedAt) {

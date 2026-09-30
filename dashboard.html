@@ -169,7 +169,7 @@
 </div>
 </div>
 <!-- Game Cards Grid Section -->
-<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16"><div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16"><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
 <!-- Kartu 1 -->
 <div class="bg-white/95 rounded-[2.5rem] p-6 sm:p-8 border-4 border-amber-300 shadow-xl shadow-amber-300/20 flex flex-col justify-between hover:scale-105 hover:rotate-1 hover:shadow-2xl hover:shadow-amber-400/40 transition-all duration-300 relative group cursor-pointer game-card" data-game-title="Memasangkan Permainan Tradisional">
 <div class="absolute -top-4 -right-4 bg-emerald-400 text-white p-3 rounded-full shadow-lg text-2xl group-hover:rotate-12 group-hover:scale-110 transition-transform">🧩</div>
@@ -214,6 +214,22 @@
 <p class="font-quicksand text-slate-600 text-sm font-semibold mb-6">Ikuti jejak dan temukan jawabannya! Asah ketelitian dan daya ingatmu di sini.</p>
 </div>
 <button class="font-kids w-full py-3.5 px-6 rounded-full text-base font-bold bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 text-amber-950 shadow-lg active:scale-95 transition cursor-pointer border-2 border-white flex items-center justify-center gap-2 main-action-btn" data-game="Mencari Jejak">
+<span class="">Main Sekarang</span>
+<span class="text-xl">🚀</span>
+</button>
+</div>
+<!-- Kartu 4 -->
+<div class="bg-white/95 rounded-[2.5rem] p-6 sm:p-8 border-4 border-amber-300 shadow-xl shadow-amber-300/20 flex flex-col justify-between hover:scale-105 hover:rotate-1 hover:shadow-2xl hover:shadow-amber-400/40 transition-all duration-300 relative group cursor-pointer game-card" data-game-title="Hitung Baju Batik">
+<div class="absolute -top-4 -right-4 bg-amber-400 text-white p-3 rounded-full shadow-lg text-2xl group-hover:rotate-12 group-hover:scale-110 transition-transform">👕</div>
+<div>
+<div class="bg-gradient-to-br from-amber-100 to-orange-100 rounded-3xl p-6 mb-6 flex items-center justify-center border-2 border-amber-300/60 h-44 group-hover:bg-amber-200/60 transition-colors">
+<span class="text-6xl drop-shadow-md select-none group-hover:scale-110 transition-transform">👕</span>
+</div>
+<span class="inline-block bg-amber-100 text-amber-700 font-kids text-xs font-bold px-3 py-1 rounded-full mb-3 border border-amber-200">Level: Berhitung ⭐⭐⭐</span>
+<h3 class="font-kids text-2xl font-bold text-slate-800 mb-2 leading-tight">Hitung Baju Batik</h3>
+<p class="font-quicksand text-slate-600 text-sm font-semibold mb-6">Hitung jumlah baju batik dan pilih angka yang sesuai dari 1 sampai 10!</p>
+</div>
+<button class="font-kids w-full py-3.5 px-6 rounded-full text-base font-bold bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 text-amber-950 shadow-lg active:scale-95 transition cursor-pointer border-2 border-white flex items-center justify-center gap-2 main-action-btn" data-game="Hitung Baju Batik">
 <span class="">Main Sekarang</span>
 <span class="text-xl">🚀</span>
 </button>
@@ -485,7 +501,8 @@
    const gameUrls = {
       'Memasangkan Permainan Tradisional': 'game1.html',
       'Menyusun Huruf': 'game2.html',
-      'Mencari Jejak': 'game3.html'
+      'Mencari Jejak': 'game3.html',
+      'Hitung Baju Batik': 'game4.html'
   };
 
     // Hover audio trigger for game cards
