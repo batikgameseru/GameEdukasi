@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kids EduGame - Game 5: Yuk, Bantu Hewan Keluar dari Labirin!</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@600;700;800&amp;family=Nunito:wght@700;800;900&amp;family=Rubik:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<style>
+    body {
+      font-family: 'Quicksand', 'Nunito', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    .btn-bouncy {
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-bouncy:active {
+      transform: translateY(2px) scale(0.95);
+    }
+    @keyframes gentleBob {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-4px) scale(1.03); }
+    }
+    .char-idle {
+      animation: gentleBob 1.6s ease-in-out infinite;
+    }
+    @keyframes softWaddle {
+      0% { transform: translateY(0) rotate(-6deg) scale(1.06); }
+      50% { transform: translateY(-6px) rotate(6deg) scale(0.96); }
+      100% { transform: translateY(0) rotate(-6deg) scale(1.06); }
+    }
+    .char-walking {
+      animation: softWaddle 0.14s ease-in-out infinite;
+    }
+    @keyframes softPulseGlow {
+      0%, 100% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.15); opacity: 0.5; }
+    }
+    .pulse-target {
+      animation: softPulseGlow 1.5s ease-in-out infinite;
+    }
+    @keyframes pawPulse {
+      0%, 100% { transform: scale(1); opacity: 0.85; }
+      50% { transform: scale(1.18); opacity: 1; }
+    }
+    .paw-clickable {
+      animation: pawPulse 1.8s ease-in-out infinite;
+      cursor: pointer;
+    }
+    .paw-clickable:hover {
+      transform: scale(1.25);
+    }
+    @keyframes softShakeAnim {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+    .shake-board {
+      animation: softShakeAnim 0.3s ease;
+    }
+    /* Grid cell walls and paths */
+    .maze-wall {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      border: 2px solid #16a34a;
+      box-shadow: inset 0 2px 4px rgba(255,255,255,0.4), 0 3px 6px rgba(22, 163, 74, 0.25);
+    }
+    .maze-path {
+      background: #ffeed0;
+      border: 1px dashed #fed7aa;
+    }
+    .maze-path-start {
+      background: #ecfdf5;
+      border: 2px solid #86efac;
+    }
+    .maze-path-exit {
+      background: #fefce8;
+      border: 2px solid #fde047;
+    }
+    /* Canvas Drawing Area */
+    #drawingCanvas {
+      touch-action: none;
+      cursor: crosshair;
+    }
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-[#eaf6fb] text-[#2c3e50] min-h-screen flex flex-col justify-between overflow-x-hidden relative selection:bg-amber-200">
+<!-- BACKGROUND DECORATIONS -->
+<div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+<svg class="absolute -top-10 -left-10 w-48 sm:w-72 md:w-96 h-auto opacity-70" fill="none" viewbox="0 0 300 200">
+<path d="M -20,200 A 180,180 0 0,1 260,200" stroke="#fda4af" stroke-linecap="round" stroke-width="20"></path>
+<path d="M 0,200 A 160,160 0 0,1 240,200" stroke="#fde047" stroke-linecap="round" stroke-width="20"></path>
+<path d="M 20,200 A 140,140 0 0,1 220,200" stroke="#86efac" stroke-linecap="round" stroke-width="20"></path>
+<path d="M 40,200 A 120,120 0 0,1 200,200" stroke="#7dd3fc" stroke-linecap="round" stroke-width="20"></path>
+<path d="M 60,200 A 100,100 0 0,1 180,200" stroke="#d8b4fe" stroke-linecap="round" stroke-width="20"></path>
+</svg>
+<div class="absolute -top-10 -right-10 w-44 sm:w-60 md:w-72 h-44 sm:h-60 md:h-72 bg-gradient-to-br from-amber-300 to-yellow-200 rounded-full opacity-60 blur-md"></div>
+<div class="absolute top-28 left-8 sm:left-24 bg-white/60 backdrop-blur-sm rounded-full w-28 h-10 shadow-sm flex items-center px-4">
+<div class="w-12 h-12 bg-white/70 rounded-full -mt-6"></div>
+<div class="w-8 h-8 bg-white/70 rounded-full -mt-3 ml-1"></div>
+</div>
+<div class="absolute top-48 left-12 text-amber-400 text-xl animate-bounce">⭐</div>
+<div class="absolute top-64 right-16 text-amber-400 text-2xl animate-pulse">✨</div>
+<div class="absolute bottom-36 left-16 text-sky-400 text-xl">🎈</div>
+<div class="absolute bottom-40 right-20 text-rose-400 text-2xl">🧩</div>
+<div class="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-emerald-100/70 via-teal-50/40 to-transparent pointer-events-none"></div>
+</div>
+<!-- MAIN WRAPPER CONTAINER -->
+<div class="relative z-10 w-full max-w-5xl mx-auto px-4 py-4 sm:py-5 flex flex-col flex-1 justify-between gap-3.5">
+<!-- HEADER CARD -->
+<header class="flex flex-col md:flex-row items-start md:items-center justify-between w-full bg-white/95 backdrop-blur-md px-6 sm:px-8 py-3.5 rounded-3xl shadow-sm border border-cyan-100/80 gap-4 sm:gap-6">
+<div class="flex flex-col items-start flex-1 min-w-0">
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100 text-sky-700 text-xs sm:text-sm font-bold tracking-wide mb-1">
+<span class="">🐾</span>
+<span class="">Mencari Jejak - Labirin</span>
+</div>
+<h1 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-[#1e3a5f] tracking-tight">
+          Yuk, Bantu Hewan Keluar dari Labirin!
+        </h1>
+<p class="text-xs sm:text-sm font-semibold text-slate-600 mt-0.5">
+<span class="text-amber-500 font-bold">✨</span> Bantu sapi, kucing, dan ayam menemukan jalan keluar dari labirin!
+        </p>
+</div>
+<!-- Action Buttons -->
+<div class="flex items-center self-stretch sm:self-auto justify-end gap-2.5 bg-sky-50/90 p-1.5 sm:p-2 rounded-full border border-sky-200 shadow-inner shrink-0 ml-auto">
+<button class="btn-bouncy px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-teal-500/30 active:scale-95 bg-teal-500 hover:bg-teal-600" id="btnMusic" type="button">
+<span class="text-base" id="musicIcon">♫</span>
+<span class="" id="musicText">Musik Nyala</span>
+</button>
+<a class="btn-bouncy px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-600 font-extrabold text-xs sm:text-sm border border-slate-200 shadow-sm flex items-center gap-1.5 transition" href="dashboard.html">
+<span class="">←</span>
+<span class="">Kembali</span>
+</a>
+</div>
+</header>
+<!-- STATUS / SCORE CARD -->
+<div class="flex flex-wrap items-center justify-between gap-3 bg-white/95 backdrop-blur-sm px-6 sm:px-8 py-2.5 rounded-2xl border border-cyan-100/80 shadow-sm">
+<div class="flex items-center gap-3">
+<span class="px-4 py-1.5 rounded-full bg-amber-400 text-amber-950 font-black text-xs sm:text-sm tracking-wide shadow-sm" id="levelBadge">Level 1: Sapi</span>
+<span class="text-xs sm:text-sm font-bold text-slate-600" id="stepCounterBadge">Langkah 1 dari 3</span>
+</div>
+<div class="flex items-center gap-2.5" id="progressDotsContainer">
+<div class="w-3.5 h-3.5 rounded-full bg-teal-500 ring-4 ring-teal-200 transition-all scale-110" id="dot-1"></div>
+<div class="w-3.5 h-3.5 rounded-full bg-slate-200 transition-all" id="dot-2"></div>
+<div class="w-3.5 h-3.5 rounded-full bg-slate-200 transition-all" id="dot-3"></div>
+</div>
+<div class="flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-xs sm:text-sm shadow-sm">
+<span class="">⭐</span>
+<span class="">Skor: <strong class="text-amber-700 text-sm sm:text-base font-black" id="scoreDisplay">0</strong> / 100</span>
+</div>
+</div>
+<!-- MAIN GAME CARD -->
+<main class="w-full flex-1 bg-white rounded-3xl md:rounded-[2.5rem] shadow-xl shadow-sky-900/5 border border-cyan-100/80 p-4 sm:p-5 md:p-6 flex flex-col items-center justify-center relative overflow-hidden">
+<!-- Friendly Toast for Wall Bump / Guidance -->
+<div class="transition-all duration-300 transform pointer-events-none absolute top-3 sm:top-5 z-40 bg-amber-100 border-2 border-amber-300 text-amber-950 px-5 py-2 rounded-2xl shadow-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 opacity-0 -translate-y-3" id="speechToast">
+<span class="text-base" id="toastIcon">💡</span>
+<span class="" id="speechToastText">Tenang 😊 Ada pagar semak, coba arah lain ya!</span>
+</div>
+<!-- Title & Instructions -->
+<div class="text-center w-full max-w-xl mb-3">
+<h2 class="text-xl sm:text-2xl font-black text-[#1e3a5f] tracking-tight" id="levelTitleText">Bantu Sapi Menemukan Rumput Segar 🐄🌱</h2>
+<p class="text-xs sm:text-sm font-semibold text-slate-500 mt-0.5" id="instructionText">“Gunakan tombol panah untuk memandu sapi manis keluar menuju rumput segar!”</p>
+</div>
+<!-- MAZE BOARD (Preschool Clean & Simple 7x7 Grid Canvas) -->
+<div class="relative w-full max-w-[340px] sm:max-w-[390px] md:max-w-[420px] bg-gradient-to-b from-emerald-50 to-teal-50/70 p-3 sm:p-4 rounded-3xl border-4 border-emerald-300 shadow-lg mx-auto" id="mazeBoardContainer">
+<!-- START BANNER OVER TOP -->
+<div class="flex items-center justify-between px-2 mb-2 text-xs font-bold text-emerald-800">
+<span class="inline-flex items-center gap-1 bg-white/90 px-2.5 py-0.5 rounded-full border border-emerald-200 shadow-xs" id="badgeEntranceText"><span class="">🚪 Pintu Masuk</span></span>
+<span class="inline-flex items-center gap-1 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300 text-amber-900 shadow-xs" id="badgeExitText"><span class="">🎯 Target Hadiah</span></span>
+</div>
+<!-- 7x7 GRID BOARD -->
+<div class="relative w-full aspect-square bg-[#fff8ed] rounded-2xl p-2.5 border-2 border-amber-200/90 shadow-inner select-none overflow-hidden touch-none" id="gridMazeWrapper">
+<!-- Grid cells dynamically generated -->
+<div class="grid grid-cols-7 grid-rows-7 gap-1.5 w-full h-full" id="gridCellsContainer"></div>
+<!-- DRAWING CANVAS (Active in Level 3) -->
+<canvas class="absolute inset-0 w-full h-full z-20 touch-none hidden pointer-events-none" height="570" id="drawingCanvas" width="570"></canvas>
+<!-- SMOOTH MOVING ANIMAL SPRITE -->
+<div class="absolute pointer-events-none transition-all duration-150 ease-out z-30 flex items-center justify-center -translate-x-1/2 -translate-y-1/2" id="characterLayer" style="left: 50%; top: 7.14286%;">
+<div class="flex items-center justify-center filter drop-shadow-md char-idle" id="charGraphicContainer" style="transform: scaleX(1);">
+</div>
+</div>
+</div>
+<!-- BOTTOM EXIT HINT -->
+<div class="mt-2 text-center text-xs font-bold text-emerald-700 flex items-center justify-center gap-1" id="mazeBottomHint"><span class="">🌿 Jalan tanah ramah anak: cari jalur terbuka sampai makanan lezat!</span></div>
+</div>
+<!-- CONTROLS CONTAINER: D-PAD (Only Level 1) -->
+<div class="w-full max-w-sm mt-4 flex flex-col items-center justify-center" id="dpadControlArea">
+<span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5" id="controlInstructionLabel">
+          Gunakan Tombol Panah:
+        </span>
+<button aria-label="Atas" class="btn-bouncy w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-teal-500 hover:bg-teal-600 text-white font-black text-2xl flex items-center justify-center shadow-[0_4px_0_#0f766e] active:translate-y-1 active:shadow-none cursor-pointer" id="btnArrowUp" type="button">
+          ⬆️
+        </button>
+<div class="flex items-center gap-3 mt-1.5">
+<button aria-label="Kiri" class="btn-bouncy w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-teal-500 hover:bg-teal-600 text-white font-black text-2xl flex items-center justify-center shadow-[0_4px_0_#0f766e] active:translate-y-1 active:shadow-none cursor-pointer" id="btnArrowLeft" type="button">
+            ⬅️
+          </button>
+<button aria-label="Bawah" class="btn-bouncy w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-teal-500 hover:bg-teal-600 text-white font-black text-2xl flex items-center justify-center shadow-[0_4px_0_#0f766e] active:translate-y-1 active:shadow-none cursor-pointer" id="btnArrowDown" type="button">
+            ⬇️
+          </button>
+<button aria-label="Kanan" class="btn-bouncy w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-teal-500 hover:bg-teal-600 text-white font-black text-2xl flex items-center justify-center shadow-[0_4px_0_#0f766e] active:translate-y-1 active:shadow-none cursor-pointer" id="btnArrowRight" type="button">
+            ➡️
+          </button>
+</div>
+</div>
+<!-- LEVEL 2 PAW GUIDANCE BANNER (Shown in Level 2) -->
+<div class="w-full max-w-sm mt-3 flex-col items-center justify-center gap-2 hidden" id="pawControlArea">
+<div class="w-full bg-amber-50 border-2 border-amber-300 rounded-2xl p-2.5 sm:p-3 text-center shadow-sm">
+<span class="inline-block text-xs sm:text-sm font-extrabold text-amber-900 leading-tight">
+          🐾 <strong>Klik jejak kaki kucing</strong> di jalur untuk memandu Kucing 🐱 menuju Ikan Segar 🐟!
+        </span>
+</div>
+</div>
+<!-- LEVEL 3 DRAWING CONTROLS INFO (Hidden in L1 & L2) -->
+<div class="w-full max-w-sm mt-3 flex-col items-center justify-center gap-2 hidden" id="drawingControlArea">
+<div class="w-full bg-amber-50 border-2 border-amber-300 rounded-2xl p-2.5 sm:p-3 text-center shadow-sm">
+<span class="inline-block text-xs sm:text-sm font-extrabold text-amber-900 leading-tight">
+          ✏️ <strong>Tarik garis</strong> dari Ayam 🐔 menuju Jagung Emas 🌽 di dalam jalur ya!
+        </span>
+</div>
+<div class="flex items-center gap-2">
+<button class="btn-bouncy px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-xs sm:text-sm shadow-sm flex items-center gap-1.5 cursor-pointer" id="btnClearCanvas" type="button">
+<span class="">🧹</span>
+<span class="">Hapus Garis</span>
+</button>
+<button class="btn-bouncy px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-amber-950 font-extrabold text-xs sm:text-sm shadow-sm flex items-center gap-1.5 cursor-pointer" id="btnColorSwitch" type="button">
+<span class="">🎨</span>
+<span class="" id="currentColorName">Warna: Oranye Cerah</span>
+</button>
+</div>
+</div>
+</main>
+<!-- BOTTOM CAPSULE NAVIGATION BAR -->
+<nav class="w-full bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-3xl shadow-md border border-cyan-100/90 p-2 sm:p-2.5 flex items-center justify-between gap-2.5 sm:gap-4">
+<!-- Tombol Sebelumnya -->
+<button class="btn-bouncy flex-1 py-2.5 sm:py-3 px-3 sm:px-6 rounded-xl sm:rounded-2xl text-xs sm:text-base font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-200 disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed" id="btnPrev" type="button">
+<span class="text-sm sm:text-lg">⬅️</span>
+<span class="">Sebelumnya</span>
+</button>
+<!-- Tombol Ulangi Posisi -->
+<button class="btn-bouncy flex-1 py-2.5 sm:py-3 px-3 sm:px-6 rounded-xl sm:rounded-2xl bg-amber-400 hover:bg-amber-500 text-amber-950 font-black text-xs sm:text-base flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer" id="btnReset" type="button">
+<span class="text-sm sm:text-lg">🔄</span>
+<span class="">Ulangi</span>
+</button>
+<!-- Tombol Next -->
+<button class="btn-bouncy flex-1 py-2.5 sm:py-3 px-3 sm:px-6 rounded-xl sm:rounded-2xl text-xs sm:text-base font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer bg-teal-500 text-white hover:bg-teal-600 shadow-sm shadow-teal-500/30 disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed" id="btnNext" type="button"><span class="">Selanjutnya</span>
+<span class="text-sm sm:text-lg">➡️</span></button>
+</nav>
+<!-- FOOTER -->
+<footer class="text-center py-1">
+<div class="inline-flex items-center gap-1.5 px-5 sm:px-7 py-1.5 rounded-full bg-white/95 backdrop-blur-sm border border-pink-200 text-[#1e3a5f] text-xs sm:text-sm font-bold shadow-sm">
+<span class="">💖</span>
+<span class="">Game ini dibuat oleh: <span class="text-sky-600 font-extrabold">Cintya Eka Puspita Sari</span></span>
+<span class="">✨</span>
+</div>
+</footer>
+</div>
+<!-- LEVEL SUCCESS MODAL -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm hidden" id="modalLevelSuccess">
+<div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm sm:max-w-md w-full text-center shadow-2xl border-4 border-amber-300 transform transition-all scale-100 flex flex-col items-center">
+<div class="text-5xl sm:text-6xl mb-2 animate-bounce" id="modalLevelIcon">🎉</div>
+<h3 class="text-2xl sm:text-3xl font-black text-amber-500 mb-1" id="modalLevelTitle">HOREEE! 🎉</h3>
+<p class="text-slate-600 font-bold text-sm sm:text-base mb-4" id="modalLevelDesc">
+        Sapi berhasil keluar dari labirin dan menemukan rumput segar!
+      </p>
+<div class="p-3 bg-amber-50 rounded-2xl border border-amber-200 mb-5 w-full flex items-center justify-center gap-2">
+<span class="text-amber-500 text-xl font-bold">⭐</span>
+<span class="text-lg sm:text-xl font-black text-amber-900" id="modalLevelScoreBonus">+35 Poin Berhasil Dikumpulkan!</span>
+</div>
+<button class="btn-bouncy w-full py-3.5 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-extrabold text-base sm:text-lg shadow-lg shadow-teal-500/30 flex items-center justify-center gap-2 cursor-pointer" id="btnNextLevelModal" type="button">
+<span class="" id="btnNextLevelText">Selanjutnya</span>
+<span class="">➡️</span>
+</button>
+</div>
+</div>
+<!-- FINAL CELEBRATION MODAL -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden" id="modalGameComplete">
+<div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md sm:max-w-lg w-full text-center shadow-2xl border-4 border-amber-400">
+<div class="text-5xl sm:text-6xl mb-2 animate-bounce">🏆</div>
+<h2 class="text-2xl sm:text-3xl md:text-4xl font-black text-amber-500 mb-1">HOREEE! SEMUA BERHASIL! 🎉</h2>
+<p class="text-slate-600 font-extrabold text-sm sm:text-base mb-4">
+        Kamu hebat sekali! Berhasil memandu semua hewan keluar dari labirin dengan pintar!
+      </p>
+<div class="bg-gradient-to-b from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-4 sm:p-5 mb-5 shadow-inner text-left space-y-2.5">
+<div class="flex justify-between items-center border-b border-amber-200/60 pb-2">
+<span class="text-xs sm:text-sm font-bold text-slate-500">Pemain Pintar:</span>
+<span class="text-sm sm:text-base font-black text-[#1e3a5f]" id="finalPlayerName">Pemain Cilik</span>
+</div>
+<div class="flex justify-between items-center border-b border-amber-200/60 pb-2">
+<span class="text-xs sm:text-sm font-bold text-slate-500">Total Skor:</span>
+<span class="text-base sm:text-xl font-black text-amber-600">⭐ 100 / 100</span>
+</div>
+<div class="flex justify-between items-center border-b border-amber-200/60 pb-2">
+<span class="text-xs sm:text-sm font-bold text-slate-500">Misi Selesai:</span>
+<span class="text-xs sm:text-sm font-extrabold text-teal-700">🐄 Sapi ✅   🐱 Kucing ✅   🐔 Ayam ✅</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-xs sm:text-sm font-bold text-slate-500">Waktu Bermain:</span>
+<span class="text-xs sm:text-sm font-extrabold text-slate-700" id="finalDurationText">01:15 Menit</span>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row gap-3">
+<button class="btn-bouncy flex-1 py-3 rounded-2xl bg-amber-400 hover:bg-amber-500 text-amber-950 font-extrabold text-sm sm:text-base shadow-md flex items-center justify-center gap-2 cursor-pointer" id="btnRestartGame" type="button">
+<span class="">🔄</span>
+<span class="">Ulangi Game</span>
+</button>
+<a class="btn-bouncy flex-1 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-sm sm:text-base border border-slate-300 flex items-center justify-center gap-2" href="dashboard.html">
+<span class="">←</span>
+<span class="">Kembali</span>
+</a>
+</div>
+</div>
+</div>
+<script>
+    // --- 1. AUDIO ENGINE ---
+    class KidsAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.isMusicMuted = false;
+        this.bgInterval = null;
+        this.tempo = 94;
+        this.step = 0;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+      }
+
+      playBGMNote(freq, dur = 0.3, gainVal = 0.04) {
+        if (this.isMusicMuted) return;
+        this.init();
+        if (!this.ctx) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(gainVal, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + dur);
+        } catch(e) {}
+      }
+
+      playStep() {
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(740, now + 0.05);
+          gain.gain.setValueAtTime(0.09, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } catch(e) {}
+      }
+
+      playCatMeow() {
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(500, now);
+          osc.frequency.linearRampToValueAtTime(750, now + 0.12);
+          osc.frequency.linearRampToValueAtTime(620, now + 0.25);
+          gain.gain.setValueAtTime(0.01, now);
+          gain.gain.linearRampToValueAtTime(0.09, now + 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.26);
+        } catch(e) {}
+      }
+
+      playChickenStep() {
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          const pitch = 680 + Math.random() * 120;
+          osc.frequency.setValueAtTime(pitch, now);
+          osc.frequency.exponentialRampToValueAtTime(pitch + 160, now + 0.05);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.07);
+        } catch(e) {}
+      }
+
+      playChickenCluck() {
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc1 = this.ctx.createOscillator();
+          const gain1 = this.ctx.createGain();
+          osc1.type = 'sawtooth';
+          osc1.frequency.setValueAtTime(500, now);
+          osc1.frequency.exponentialRampToValueAtTime(720, now + 0.07);
+          gain1.gain.setValueAtTime(0.07, now);
+          gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+          osc1.connect(gain1);
+          gain1.connect(this.ctx.destination);
+          osc1.start(now);
+          osc1.stop(now + 0.1);
+
+          setTimeout(() => {
+            if (!this.ctx) return;
+            const now2 = this.ctx.currentTime;
+            const osc2 = this.ctx.createOscillator();
+            const gain2 = this.ctx.createGain();
+            osc2.type = 'sawtooth';
+            osc2.frequency.setValueAtTime(620, now2);
+            osc2.frequency.exponentialRampToValueAtTime(900, now2 + 0.08);
+            gain2.gain.setValueAtTime(0.09, now2);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now2 + 0.12);
+            osc2.connect(gain2);
+            gain2.connect(this.ctx.destination);
+            osc2.start(now2);
+            osc2.stop(now2 + 0.12);
+          }, 110);
+        } catch(e) {}
+      }
+
+      playDrawSfx() {
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600 + Math.random() * 200, now);
+          gain.gain.setValueAtTime(0.04, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.06);
+        } catch(e) {}
+      }
+
+      playWallBump() {
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(140, now + 0.12);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.14);
+        } catch(e) {}
+      }
+
+      playOoOh() {
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(360, now);
+          osc.frequency.linearRampToValueAtTime(290, now + 0.12);
+          osc.frequency.linearRampToValueAtTime(220, now + 0.32);
+
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.linearRampToValueAtTime(0.08, now + 0.2);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.34);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.35);
+        } catch(e) {}
+      }
+
+      playSuccessFanfare() {
+        this.init();
+        if (!this.ctx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((f, idx) => {
+          setTimeout(() => {
+            try {
+              const now = this.ctx.currentTime;
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'square';
+              osc.frequency.setValueAtTime(f, now);
+              gain.gain.setValueAtTime(0.08, now);
+              gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+              osc.connect(gain);
+              gain.connect(this.ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.24);
+            } catch(e) {}
+          }, idx * 110);
+        });
+      }
+
+      startBGM() {
+        if (this.isMusicMuted || this.bgInterval) return;
+        this.init();
+        const N = { C4: 261.63, D4: 293.66, E4: 329.63, G4: 392.00, A4: 440.00, C5: 523.25, R: 0 };
+        const melody = [N.C4, N.E4, N.G4, N.A4, N.G4, N.E4, N.C5, N.R, N.A4, N.G4, N.E4, N.C4];
+        const stepMs = (60 / this.tempo) * 1000 * 0.5;
+
+        this.bgInterval = setInterval(() => {
+          if (this.isMusicMuted) return;
+          const n = melody[this.step % melody.length];
+          if (n > 0) this.playBGMNote(n, 0.32, 0.035);
+          this.step++;
+        }, stepMs);
+      }
+
+      stopBGM() {
+        if (this.bgInterval) {
+          clearInterval(this.bgInterval);
+          this.bgInterval = null;
+        }
+      }
+
+      toggleMusic() {
+        this.isMusicMuted = !this.isMusicMuted;
+        if (this.isMusicMuted) this.stopBGM();
+        else {
+          this.init();
+          this.startBGM();
+        }
+        return !this.isMusicMuted;
+      }
+    }
+
+    const sound = new KidsAudioEngine();
+
+    // --- 2. VECTOR ANIMAL ICONS ---
+    const CUTE_COW_SVG = `
+      <svg viewBox="0 0 100 100" class="w-8 h-8 sm:w-10 sm:h-10 overflow-visible" id="cowSvg">
+        <rect x="26" y="78" width="10" height="13" rx="4" fill="#2c3437" stroke="#171d1d" stroke-width="2"/>
+        <rect x="64" y="78" width="10" height="13" rx="4" fill="#2c3437" stroke="#171d1d" stroke-width="2"/>
+        <ellipse cx="50" cy="62" rx="26" ry="20" fill="#ffffff" stroke="#171d1d" stroke-width="3"/>
+        <path d="M 26,56 C 25,67 36,72 38,64 C 40,55 32,50 26,56 Z" fill="#2c3437"/>
+        <path d="M 66,58 C 72,50 77,65 73,70 C 69,74 64,65 66,58 Z" fill="#2c3437"/>
+        <path d="M 33,23 Q 29,10 38,14 Q 39,20 38,24 Z" fill="#fde047" stroke="#ca8a04" stroke-width="1.8"/>
+        <path d="M 67,23 Q 71,10 62,14 Q 61,20 62,24 Z" fill="#fde047" stroke="#ca8a04" stroke-width="1.8"/>
+        <ellipse cx="23" cy="27" rx="8" ry="5.5" transform="rotate(-15 23 27)" fill="#2c3437" stroke="#171d1d" stroke-width="2"/>
+        <ellipse cx="24" cy="27" rx="4" ry="2.5" transform="rotate(-15 24 27)" fill="#fbcfe8"/>
+        <ellipse cx="77" cy="27" rx="8" ry="5.5" transform="rotate(15 77 27)" fill="#ffffff" stroke="#171d1d" stroke-width="2"/>
+        <ellipse cx="76" cy="27" rx="4" ry="2.5" transform="rotate(15 76 27)" fill="#fbcfe8"/>
+        <ellipse cx="50" cy="34" rx="23" ry="20" fill="#ffffff" stroke="#171d1d" stroke-width="3"/>
+        <path d="M 31,16 C 34,26 43,26 42,16 Z" fill="#2c3437"/>
+        <path d="M 58,15 C 65,24 72,22 68,14 Z" fill="#2c3437"/>
+        <circle cx="41" cy="31" r="3.8" fill="#171d1d"/><circle cx="42" cy="29.5" r="1.3" fill="#ffffff"/>
+        <circle cx="59" cy="31" r="3.8" fill="#171d1d"/><circle cx="60" cy="29.5" r="1.3" fill="#ffffff"/>
+        <circle cx="33" cy="37" r="3.5" fill="#fda4af" opacity="0.8"/>
+        <circle cx="67" cy="37" r="3.5" fill="#fda4af" opacity="0.8"/>
+        <ellipse cx="50" cy="41" rx="13" ry="8.5" fill="#fbcfe8" stroke="#f472b6" stroke-width="2"/>
+        <ellipse cx="45" cy="41" rx="1.8" ry="1.5" fill="#be185d"/>
+        <ellipse cx="55" cy="41" rx="1.8" ry="1.5" fill="#be185d"/>
+        <path d="M 47,44 Q 50,46.5 53,44" fill="none" stroke="#be185d" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    `;
+
+    const CUTE_CAT_SVG = `
+      <svg viewBox="0 0 100 100" class="w-8 h-8 sm:w-10 sm:h-10 overflow-visible" id="catSvg">
+        <path d="M 23,68 Q 11,70 14,56 Q 17,49 24,53" fill="none" stroke="#ea580c" stroke-width="5" stroke-linecap="round"/>
+        <rect x="36" y="77" width="8" height="12" rx="4" fill="#fb923c" stroke="#c2410c" stroke-width="1.8"/>
+        <rect x="56" y="77" width="8" height="12" rx="4" fill="#fb923c" stroke="#c2410c" stroke-width="1.8"/>
+        <ellipse cx="50" cy="62" rx="22" ry="18" fill="#fb923c" stroke="#c2410c" stroke-width="2.5"/>
+        <ellipse cx="50" cy="64" rx="13" ry="11" fill="#ffedd5"/>
+        <polygon points="30,34 38,14 48,29" fill="#fb923c" stroke="#c2410c" stroke-width="2"/>
+        <polygon points="34,31 39,19 45,28" fill="#fda4af"/>
+        <polygon points="70,34 62,14 52,29" fill="#fb923c" stroke="#c2410c" stroke-width="2"/>
+        <polygon points="66,31 61,19 55,28" fill="#fda4af"/>
+        <ellipse cx="50" cy="38" rx="22" ry="17" fill="#fb923c" stroke="#c2410c" stroke-width="2.5"/>
+        <circle cx="41" cy="36" r="3.6" fill="#1e293b"/><circle cx="42" cy="34.8" r="1.2" fill="#ffffff"/>
+        <circle cx="59" cy="36" r="3.6" fill="#1e293b"/><circle cx="60" cy="34.8" r="1.2" fill="#ffffff"/>
+        <polygon points="50,41 47,44 53,44" fill="#f43f5e"/>
+        <path d="M 47,44.5 Q 44,48 48,49 M 53,44.5 Q 56,48 52,49" fill="none" stroke="#c2410c" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="33" y1="42" x2="22" y2="40" stroke="#ea580c" stroke-width="1.3"/>
+        <line x1="33" y1="45" x2="23" y2="47" stroke="#ea580c" stroke-width="1.3"/>
+        <line x1="67" y1="42" x2="78" y2="40" stroke="#ea580c" stroke-width="1.3"/>
+        <line x1="67" y1="45" x2="77" y2="47" stroke="#ea580c" stroke-width="1.3"/>
+      </svg>
+    `;
+
+    const CUTE_CHICKEN_SVG = `
+      <svg viewBox="0 0 100 100" class="w-8 h-8 sm:w-10 sm:h-10 overflow-visible" id="henSvg">
+        <path d="M 42,78 L 42,88 M 38,88 L 46,88 M 58,78 L 58,88 M 54,88 L 62,88" stroke="#f97316" stroke-width="2.8" stroke-linecap="round"/>
+        <path d="M 28,52 Q 15,44 20,34 Q 27,43 33,48 Z" fill="#fef08a" stroke="#ca8a04" stroke-width="2"/>
+        <ellipse cx="50" cy="58" rx="24" ry="20" fill="#fef08a" stroke="#ca8a04" stroke-width="2.6"/>
+        <ellipse cx="44" cy="58" rx="13" ry="9" transform="rotate(-15 44 58)" fill="#fde047" stroke="#ca8a04" stroke-width="2"/>
+        <circle cx="44" cy="21" r="4.8" fill="#ef4444"/>
+        <circle cx="51" cy="18" r="5.5" fill="#ef4444"/>
+        <circle cx="58" cy="21" r="4.8" fill="#ef4444"/>
+        <circle cx="52" cy="34" r="16" fill="#fef08a" stroke="#ca8a04" stroke-width="2.6"/>
+        <circle cx="56" cy="32" r="3.3" fill="#1e293b"/><circle cx="57" cy="30.8" r="1.1" fill="#ffffff"/>
+        <polygon points="63,34 73,38 63,42" fill="#f97316" stroke="#c2410c" stroke-width="1.6"/>
+        <ellipse cx="61" cy="44" rx="3.2" ry="4.5" fill="#ef4444"/>
+        <circle cx="51" cy="38" r="3" fill="#fb923c" opacity="0.4"/>
+      </svg>
+    `;
+
+    // --- 3. 7x7 CLEAN GRID MAZE DESIGNS ---
+    const level1Data = {
+      title: "Bantu Sapi Menemukan Rumput Segar 🐄🌱",
+      instruction: "“Gunakan tombol panah untuk memandu sapi manis keluar menuju rumput segar!”",
+      charSvg: CUTE_COW_SVG,
+      targetFoodEmoji: "🌾",
+      targetName: "Rumput Segar",
+      start: { r: 0, c: 3 },
+      exit: { r: 6, c: 3 },
+      mode: "dpad",
+      grid: [
+        [1, 1, 1, 0, 1, 1, 1], // Start at (0,3)
+        [1, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 1, 0, 1],
+        [1, 0, 0, 0, 1, 0, 1],
+        [1, 1, 1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1, 1, 1],
+        [1, 1, 1, 0, 1, 1, 1]  // Exit at (6,3)
+      ]
+    };
+
+    // LEVEL 2: DUA JALUR TERBUKA tembus sampai ke Ikan Segar (🐟) di (6,3)!
+    // Interaksi: Klik Jejak Kaki (paw print) untuk berjalan!
+    const level2Data = {
+      title: "Bantu Kucing Menemukan Mangkuk Ikan 🐱🐟",
+      instruction: "“Klik jejak kaki 🐾 untuk memandu Kucing ke Ikan Segar 🐟!”",
+      charSvg: CUTE_CAT_SVG,
+      targetFoodEmoji: "🐟",
+      targetName: "Ikan Segar",
+      start: { r: 0, c: 3 },
+      exit: { r: 6, c: 3 },
+      mode: "paw",
+      grid: [
+        [1, 1, 1, 0, 1, 1, 1], // Start di tengah (0,3)
+        [1, 0, 0, 0, 0, 0, 1], // Jalur mendatar bercabang ke kiri dan kanan
+        [1, 0, 1, 1, 1, 0, 1], // Cabang Kiri (c:1) & Cabang Kanan (c:5) sama-sama terbuka
+        [1, 0, 0, 1, 0, 0, 1], // Kolom kiri (1,2) & kolom kanan (4,5) terbuka
+        [1, 0, 1, 1, 1, 0, 1], // Lanjut turun kedua sisinya
+        [1, 0, 0, 0, 0, 0, 1], // Bersatu kembali di lorong bawah
+        [1, 1, 1, 0, 1, 1, 1]  // Menuju sasaran ikan di (6,3)
+      ]
+    };
+
+    // LEVEL 3: TARIK GARIS (Draw Path / Drag & Draw Line)
+    const level3Data = {
+      title: "Bantu Ayam Menemukan Jagung Emas 🐔🌽",
+      instruction: "“Tarik garis dari Ayam 🐔 menuju Jagung Emas 🌽 di dalam jalur, lalu lepaskan!”",
+      charSvg: CUTE_CHICKEN_SVG,
+      targetFoodEmoji: "🌽",
+      targetName: "Jagung Emas",
+      start: { r: 0, c: 1 },
+      exit: { r: 6, c: 5 },
+      mode: "draw",
+      grid: [
+        [1, 0, 1, 1, 1, 1, 1], // Start Ayam di (0,1)
+        [1, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 0, 0, 1],
+        [1, 0, 0, 0, 0, 1, 1],
+        [1, 0, 1, 1, 0, 0, 1],
+        [1, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1, 0, 1]  // Exit Jagung Emas di (6,5)
+      ]
+    };
+
+    const levels = { 1: level1Data, 2: level2Data, 3: level3Data };
+
+    // --- 4. GAME STATE ---
+    let currentLevel = 1;
+    let playerPos = { r: 0, c: 3 };
+    let totalScore = 0;
+    let isMoving = false;
+    let isLevelFinished = false;
+
+    // Data pemain + session game dibuat baru saat Game 5 dibuka
+    const playerName = localStorage.getItem('playerName') || 'Teman';
+    let startTime = Date.now();
+    const gameName = 'Mencari Jejak - Labirin';
+
+    const initialGameSession = {
+      playerName: playerName,
+      gameName: gameName,
+      startedAt: new Date(startTime).toISOString()
+    };
+
+    localStorage.setItem(
+      'currentGameSession',
+      JSON.stringify(initialGameSession)
+    );
+
+    console.log('Nama pemain:', playerName);
+    console.log('Game yang dipilih:', gameName);
+    console.log('Waktu mulai:', initialGameSession.startedAt);
+
+    // Palette Colors for Drawing
+    const drawColors = [
+      { name: "Oranye Cerah", value: "#f97316" },
+      { name: "Toska Segar", value: "#0d9488" },
+      { name: "Kuning Ceria", value: "#eab308" },
+      { name: "Pink Manis", value: "#ec4899" }
+    ];
+    let currentColorIndex = 0;
+
+    // DOM References
+    const gridCellsContainer = document.getElementById('gridCellsContainer');
+    const gridMazeWrapper = document.getElementById('gridMazeWrapper');
+    const characterLayer = document.getElementById('characterLayer');
+    const charGraphicContainer = document.getElementById('charGraphicContainer');
+    const drawingCanvas = document.getElementById('drawingCanvas');
+    const dpadControlArea = document.getElementById('dpadControlArea');
+    const pawControlArea = document.getElementById('pawControlArea');
+    const drawingControlArea = document.getElementById('drawingControlArea');
+    const levelBadge = document.getElementById('levelBadge');
+    const stepCounterBadge = document.getElementById('stepCounterBadge');
+    const levelTitleText = document.getElementById('levelTitleText');
+    const instructionText = document.getElementById('instructionText');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const speechToast = document.getElementById('speechToast');
+    const toastIcon = document.getElementById('toastIcon');
+    const speechToastText = document.getElementById('speechToastText');
+    const mazeBoardContainer = document.getElementById('mazeBoardContainer');
+    const mazeBottomHint = document.getElementById('mazeBottomHint');
+    const badgeEntranceText = document.getElementById('badgeEntranceText');
+    const badgeExitText = document.getElementById('badgeExitText');
+    const btnPrev = document.getElementById('btnPrev');
+    const btnReset = document.getElementById('btnReset');
+    const btnNext = document.getElementById('btnNext');
+    const btnClearCanvas = document.getElementById('btnClearCanvas');
+    const btnColorSwitch = document.getElementById('btnColorSwitch');
+    const currentColorName = document.getElementById('currentColorName');
+
+    // D-Pad References
+    const btnArrowUp = document.getElementById('btnArrowUp');
+    const btnArrowDown = document.getElementById('btnArrowDown');
+    const btnArrowLeft = document.getElementById('btnArrowLeft');
+    const btnArrowRight = document.getElementById('btnArrowRight');
+
+    let toastTimer = null;
+    function showToast(msg = "Tenang 😊 Ada pagar semak, coba arah lain ya!", icon = "💡") {
+      toastIcon.textContent = icon;
+      speechToastText.textContent = msg;
+      speechToast.classList.remove('opacity-0', '-translate-y-3');
+      speechToast.classList.add('opacity-100', 'translate-y-0');
+
+      mazeBoardContainer.classList.remove('shake-board');
+      void mazeBoardContainer.offsetWidth;
+      mazeBoardContainer.classList.add('shake-board');
+
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        speechToast.classList.remove('opacity-100', 'translate-y-0');
+        speechToast.classList.add('opacity-0', '-translate-y-3');
+      }, 1500);
+    }
+
+    // Convert cell coord (r, c) to percentage inside grid container
+    function updateCharacterVisual(r, c) {
+      const step = 100 / 7;
+      const leftPct = (c + 0.5) * step;
+      const topPct = (r + 0.5) * step;
+      characterLayer.style.left = `${leftPct}%`;
+      characterLayer.style.top = `${topPct}%`;
+    }
+
+    // BFS Pathfinding helper for Level 2 Paw Navigation
+    function findShortestPath(start, target, grid) {
+      const queue = [[start]];
+      const visited = Array.from({ length: 7 }, () => Array(7).fill(false));
+      visited[start.r][start.c] = true;
+
+      const directions = [
+        { r: -1, c: 0 },
+        { r: 1, c: 0 },
+        { r: 0, c: -1 },
+        { r: 0, c: 1 }
+      ];
+
+      while (queue.length > 0) {
+        const path = queue.shift();
+        const curr = path[path.length - 1];
+
+        if (curr.r === target.r && curr.c === target.c) {
+          return path;
+        }
+
+        for (const dir of directions) {
+          const nr = curr.r + dir.r;
+          const nc = curr.c + dir.c;
+          if (nr >= 0 && nr < 7 && nc >= 0 && nc < 7 && !visited[nr][nc] && grid[nr][nc] === 0) {
+            visited[nr][nc] = true;
+            queue.push([...path, { r: nr, c: nc }]);
+          }
+        }
+      }
+      return null;
+    }
+
+    function renderMazeGrid() {
+      const cfg = levels[currentLevel];
+      gridCellsContainer.innerHTML = '';
+      isLevelFinished = false;
+
+      for (let r = 0; r < 7; r++) {
+        for (let c = 0; c < 7; c++) {
+          const cellVal = cfg.grid[r][c];
+          const cellDiv = document.createElement('div');
+          cellDiv.dataset.r = r;
+          cellDiv.dataset.c = c;
+          cellDiv.className = 'w-full h-full rounded-xl sm:rounded-2xl relative flex items-center justify-center';
+
+          if (cellVal === 1) {
+            // Rounded Hedge Wall
+            cellDiv.classList.add('maze-wall');
+            cellDiv.innerHTML = `
+              <span class="text-[10px] sm:text-xs text-emerald-100 opacity-60 pointer-events-none select-none">🍃</span>
+            `;
+          } else {
+            // Warm Sand Path
+            cellDiv.classList.add('maze-path');
+
+            // Start Entrance Cell
+            if (r === cfg.start.r && c === cfg.start.c) {
+              cellDiv.classList.add('maze-path-start');
+              const startMark = document.createElement('div');
+              startMark.className = 'absolute -top-1 font-bold text-[9px] sm:text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded-full uppercase tracking-tight shadow-xs pointer-events-none z-10';
+              startMark.textContent = 'Mulai';
+              cellDiv.appendChild(startMark);
+            }
+
+            // Target Exit Cell
+            if (r === cfg.exit.r && c === cfg.exit.c) {
+              cellDiv.classList.add('maze-path-exit');
+              const foodTarget = document.createElement('div');
+              foodTarget.className = 'pulse-target text-xl sm:text-2xl select-none flex items-center justify-center filter drop-shadow z-10 cursor-pointer';
+              foodTarget.textContent = cfg.targetFoodEmoji;
+              foodTarget.title = cfg.targetName;
+              foodTarget.id = 'targetExitElement';
+              
+              if (cfg.mode === 'paw') {
+                foodTarget.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  onPawCellClicked(r, c);
+                });
+              }
+              cellDiv.appendChild(foodTarget);
+            }
+
+            // LEVEL 2: Render cute interactive Paw Prints on open path cells
+            if (cfg.mode === 'paw') {
+              cellDiv.classList.add('cursor-pointer');
+              if (!(r === cfg.exit.r && c === cfg.exit.c)) {
+                const pawSpan = document.createElement('span');
+                pawSpan.className = 'paw-clickable text-xs sm:text-sm select-none opacity-85 hover:opacity-100 transition-all filter drop-shadow-xs';
+                pawSpan.textContent = '🐾';
+                pawSpan.title = 'Langkah ke sini';
+                cellDiv.appendChild(pawSpan);
+              }
+              cellDiv.addEventListener('click', () => onPawCellClicked(r, c));
+            }
+          }
+
+          gridCellsContainer.appendChild(cellDiv);
+        }
+      }
+
+      // Inject character sprite
+      charGraphicContainer.innerHTML = cfg.charSvg;
+      updateCharacterVisual(playerPos.r, playerPos.c);
+
+      // Handle Control Mode Switch
+      if (cfg.mode === 'draw') {
+        // Level 3 (Draw Line)
+        dpadControlArea.classList.add('hidden');
+        pawControlArea.classList.add('hidden');
+        pawControlArea.classList.remove('flex');
+        drawingControlArea.classList.remove('hidden');
+        drawingControlArea.classList.add('flex');
+        drawingCanvas.classList.remove('hidden');
+        drawingCanvas.classList.remove('pointer-events-none');
+        mazeBottomHint.innerHTML = `<span>✨ Sentuh Ayam 🐔 dan tarik garis cantik sampai Jagung Emas 🌽!</span>`;
+        badgeExitText.innerHTML = `<span>🌽 Jagung Emas</span>`;
+        badgeEntranceText.innerHTML = `<span>🐔 Ayam Manis</span>`;
+        setTimeout(initCanvas, 30);
+      } else if (cfg.mode === 'paw') {
+        // Level 2 (Paw Print Click Mechanism)
+        dpadControlArea.classList.add('hidden');
+        drawingControlArea.classList.add('hidden');
+        drawingControlArea.classList.remove('flex');
+        pawControlArea.classList.remove('hidden');
+        pawControlArea.classList.add('flex');
+        drawingCanvas.classList.add('hidden');
+        drawingCanvas.classList.add('pointer-events-none');
+        mazeBottomHint.innerHTML = `<span>🐾 Klik jejak kaki kucing di jalur mana saja untuk mengajak Kucing melangkah!</span>`;
+        badgeExitText.innerHTML = `<span>🐟 Ikan Segar</span>`;
+        badgeEntranceText.innerHTML = `<span>🐱 Kucing Manis</span>`;
+      } else {
+        // Level 1 (D-Pad Control)
+        dpadControlArea.classList.remove('hidden');
+        pawControlArea.classList.add('hidden');
+        pawControlArea.classList.remove('flex');
+        drawingControlArea.classList.add('hidden');
+        drawingControlArea.classList.remove('flex');
+        drawingCanvas.classList.add('hidden');
+        drawingCanvas.classList.add('pointer-events-none');
+        badgeExitText.innerHTML = `<span>🎯 Target Hadiah</span>`;
+        badgeEntranceText.innerHTML = `<span>🚪 Pintu Masuk</span>`;
+        mazeBottomHint.innerHTML = `<span>🌿 Jalan tanah ramah anak: cari jalur terbuka sampai makanan lezat!</span>`;
+      }
+    }
+
+    // --- LEVEL 2: PAW PRINT CLICK STEP-BY-STEP MOVEMENT ---
+    function onPawCellClicked(targetR, targetC) {
+      if (currentLevel !== 2 || isMoving || isLevelFinished) return;
+      const cfg = levels[2];
+      
+      // If already at clicked cell
+      if (playerPos.r === targetR && playerPos.c === targetC) return;
+
+      // Find path from current player position to clicked target cell
+      const path = findShortestPath(playerPos, { r: targetR, c: targetC }, cfg.grid);
+      if (!path || path.length <= 1) {
+        showToast("Klik jejak kaki yang ada di lorong ya! 🐾", "🐾");
+        return;
+      }
+
+      // Animate cat smoothly stepping through each waypoint cell in the path
+      isMoving = true;
+      sound.playCatMeow();
+      charGraphicContainer.classList.remove('char-idle');
+      charGraphicContainer.classList.add('char-walking');
+
+      let stepIdx = 1;
+      const moveInterval = setInterval(() => {
+        if (stepIdx >= path.length) {
+          clearInterval(moveInterval);
+          isMoving = false;
+          charGraphicContainer.classList.remove('char-walking');
+          charGraphicContainer.classList.add('char-idle');
+
+          // Win check
+          if (playerPos.r === cfg.exit.r && playerPos.c === cfg.exit.c) {
+            handleLevelComplete();
+          }
+          return;
+        }
+
+        const nextCell = path[stepIdx];
+        if (nextCell.c < playerPos.c) {
+          charGraphicContainer.style.transform = 'scaleX(-1)';
+        } else if (nextCell.c > playerPos.c) {
+          charGraphicContainer.style.transform = 'scaleX(1)';
+        }
+
+        playerPos.r = nextCell.r;
+        playerPos.c = nextCell.c;
+        updateCharacterVisual(playerPos.r, playerPos.c);
+        sound.playStep();
+
+        stepIdx++;
+      }, 150);
+    }
+
+    // --- 5. PERGERAKAN D-PAD / MOVEMENT DISPATCHER (Only Level 1) ---
+    function movePlayer(dr, dc, facing) {
+      if (isMoving || isLevelFinished) return;
+      const cfg = levels[currentLevel];
+      if (cfg.mode !== 'dpad') return; // Only Level 1 uses D-pad
+
+      const newR = playerPos.r + dr;
+      const newC = playerPos.c + dc;
+
+      if (facing === 'left') {
+        charGraphicContainer.style.transform = 'scaleX(-1)';
+      } else if (facing === 'right') {
+        charGraphicContainer.style.transform = 'scaleX(1)';
+      }
+
+      // Grid Boundary & Wall check
+      if (newR >= 0 && newR < 7 && newC >= 0 && newC < 7 && cfg.grid[newR][newC] === 0) {
+        isMoving = true;
+        playerPos.r = newR;
+        playerPos.c = newC;
+        sound.playStep();
+
+        charGraphicContainer.classList.remove('char-idle');
+        charGraphicContainer.classList.add('char-walking');
+        updateCharacterVisual(playerPos.r, playerPos.c);
+
+        setTimeout(() => {
+          isMoving = false;
+          charGraphicContainer.classList.remove('char-walking');
+          charGraphicContainer.classList.add('char-idle');
+
+          // Check Win Condition
+          if (playerPos.r === cfg.exit.r && playerPos.c === cfg.exit.c) {
+            handleLevelComplete();
+          }
+        }, 160);
+      } else {
+        sound.playWallBump();
+        showToast("Tenang 😊 Ada pagar semak, coba arah lain ya!", "💡");
+      }
+    }
+
+    // D-Pad Click Events
+    btnArrowUp.addEventListener('click', () => movePlayer(-1, 0, 'none'));
+    btnArrowDown.addEventListener('click', () => movePlayer(1, 0, 'none'));
+    btnArrowLeft.addEventListener('click', () => movePlayer(0, -1, 'left'));
+    btnArrowRight.addEventListener('click', () => movePlayer(0, 1, 'right'));
+
+    // Keyboard Arrow Keys & WASD (Active only when in Level 1)
+    window.addEventListener('keydown', (e) => {
+      if (currentLevel !== 1) return;
+      if (['ArrowUp', 'w', 'W'].includes(e.key)) { e.preventDefault(); movePlayer(-1, 0, 'none'); }
+      if (['ArrowDown', 's', 'S'].includes(e.key)) { e.preventDefault(); movePlayer(1, 0, 'none'); }
+      if (['ArrowLeft', 'a', 'A'].includes(e.key)) { e.preventDefault(); movePlayer(0, -1, 'left'); }
+      if (['ArrowRight', 'd', 'D'].includes(e.key)) { e.preventDefault(); movePlayer(0, 1, 'right'); }
+    });
+
+    // --- 6. LEVEL 3: INTERACTIVE CANVAS DRAWING & CHICKEN RUN ENGINE ---
+    let ctx = null;
+    let isDrawing = false;
+    let linePoints = [];
+    let isChickenRunning = false;
+    let lineTouchedWall = false;
+
+    function initCanvas() {
+      const rect = gridMazeWrapper.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      drawingCanvas.width = rect.width * dpr;
+      drawingCanvas.height = rect.height * dpr;
+      ctx = drawingCanvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      clearCanvasOnly();
+    }
+
+    function clearCanvasOnly() {
+      if (!ctx) return;
+      const rect = gridMazeWrapper.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      linePoints = [];
+      lineTouchedWall = false;
+    }
+
+    function getCanvasCoords(e) {
+      const rect = gridMazeWrapper.getBoundingClientRect();
+      let clientX, clientY;
+      if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else if (e.changedTouches && e.changedTouches.length > 0) {
+        clientX = e.changedTouches[0].clientX;
+        clientY = e.changedTouches[0].clientY;
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function isPointInsideWall(pt) {
+      const rect = gridMazeWrapper.getBoundingClientRect();
+      const cellW = rect.width / 7;
+      const cellH = rect.height / 7;
+      const col = Math.floor(pt.x / cellW);
+      const row = Math.floor(pt.y / cellH);
+
+      // Outside maze bounding box counts as wall/invalid
+      if (row < 0 || row >= 7 || col < 0 || col >= 7) return true;
+      return levels[3].grid[row][col] === 1;
+    }
+
+    function isPointNearCell(pt, row, col, multiplier = 1.05) {
+      const rect = gridMazeWrapper.getBoundingClientRect();
+      const cellW = rect.width / 7;
+      const cellH = rect.height / 7;
+      const centerX = (col + 0.5) * cellW;
+      const centerY = (row + 0.5) * cellH;
+      const dist = Math.hypot(pt.x - centerX, pt.y - centerY);
+      return dist <= (cellW * 0.5 * multiplier);
+    }
+
+    function startDrawing(e) {
+      if (currentLevel !== 3 || isLevelFinished || isChickenRunning) return;
+      const pt = getCanvasCoords(e);
+      const cfg = levels[3];
+
+      // Check if starting touch is near Chicken start position (0, 1) or first quadrant
+      const nearStart = isPointNearCell(pt, cfg.start.r, cfg.start.c, 1.45);
+      if (!nearStart) {
+        showToast("Yuk, mulai tarik garis dari Ayam di atas 🐔!", "🐔");
+        return;
+      }
+
+      isDrawing = true;
+      lineTouchedWall = false;
+      clearCanvasOnly();
+      linePoints.push(pt);
+      sound.playDrawSfx();
+      drawStroke();
+    }
+
+    function drawMovement(e) {
+      if (!isDrawing || currentLevel !== 3 || isLevelFinished || isChickenRunning) return;
+      const pt = getCanvasCoords(e);
+
+      // Check if current drawn point enters wall
+      if (isPointInsideWall(pt)) {
+        lineTouchedWall = true;
+      }
+
+      linePoints.push(pt);
+      sound.playDrawSfx();
+      drawStroke();
+    }
+
+    function stopDrawing() {
+      if (!isDrawing || currentLevel !== 3 || isLevelFinished || isChickenRunning) return;
+      isDrawing = false;
+
+      const cfg = levels[3];
+      if (linePoints.length < 5) {
+        clearCanvasOnly();
+        return;
+      }
+
+      const lastPt = linePoints[linePoints.length - 1];
+      const reachedTarget = isPointNearCell(lastPt, cfg.exit.r, cfg.exit.c, 1.35);
+
+      // Failure cases: touched wall OR did not reach golden corn target
+      if (lineTouchedWall || !reachedTarget) {
+        flashInvalidStrokeAndReset(lineTouchedWall ? "Aduh, garis menyentuh semak! Coba lagi yaa 🍃" : "Garisnya belum sampai ke Jagung Emas 🌽. Yuk coba lagi!");
+        return;
+      }
+
+      // SUCCESS: Animate Chicken walking along the drawn line
+      animateChickenAlongPath();
+    }
+
+    function flashInvalidStrokeAndReset(msg) {
+      sound.playOoOh();
+      showToast(msg, "🐣");
+
+      // Soft red glow flash on drawn line
+      if (ctx && linePoints.length > 1) {
+        const rect = gridMazeWrapper.getBoundingClientRect();
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        ctx.beginPath();
+        ctx.moveTo(linePoints[0].x, linePoints[0].y);
+        for (let i = 1; i < linePoints.length; i++) {
+          ctx.lineTo(linePoints[i].x, linePoints[i].y);
+        }
+        ctx.strokeStyle = "#f43f5e";
+        ctx.lineWidth = Math.max(9, rect.width / 30);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.shadowColor = "#f43f5e";
+        ctx.shadowBlur = 14;
+        ctx.stroke();
+      }
+
+      // Reset after short friendly flash
+      setTimeout(() => {
+        clearCanvasOnly();
+        const cfg = levels[3];
+        playerPos = { r: cfg.start.r, c: cfg.start.c };
+        updateCharacterVisual(playerPos.r, playerPos.c);
+        charGraphicContainer.style.transform = 'scaleX(1)';
+        charGraphicContainer.classList.remove('char-walking');
+        charGraphicContainer.classList.add('char-idle');
+      }, 450);
+    }
+
+    function animateChickenAlongPath() {
+      isChickenRunning = true;
+      sound.playChickenCluck();
+
+      // Sample ~35 smooth intermediate waypoint frames from drawn path
+      const sampleCount = Math.min(45, Math.max(24, Math.floor(linePoints.length / 2)));
+      const sampledWaypoints = [];
+      for (let i = 0; i < sampleCount; i++) {
+        const idx = Math.floor((i / (sampleCount - 1)) * (linePoints.length - 1));
+        sampledWaypoints.push(linePoints[idx]);
+      }
+
+      const rect = gridMazeWrapper.getBoundingClientRect();
+      charGraphicContainer.classList.remove('char-idle');
+      charGraphicContainer.classList.add('char-walking');
+
+      let currentFrame = 0;
+      let lastX = sampledWaypoints[0].x;
+
+      const stepInterval = setInterval(() => {
+        if (currentFrame >= sampledWaypoints.length) {
+          clearInterval(stepInterval);
+          isChickenRunning = false;
+          charGraphicContainer.classList.remove('char-walking');
+          charGraphicContainer.classList.add('char-idle');
+
+          // Lock final target position
+          const cfg = levels[3];
+          playerPos = { r: cfg.exit.r, c: cfg.exit.c };
+          updateCharacterVisual(playerPos.r, playerPos.c);
+
+          handleLevelComplete();
+          return;
+        }
+
+        const pt = sampledWaypoints[currentFrame];
+        const leftPct = (pt.x / rect.width) * 100;
+        const topPct = (pt.y / rect.height) * 100;
+
+        characterLayer.style.left = `${leftPct}%`;
+        characterLayer.style.top = `${topPct}%`;
+
+        // Turn facing direction based on movement
+        if (pt.x < lastX - 2) {
+          charGraphicContainer.style.transform = 'scaleX(-1)';
+        } else if (pt.x > lastX + 2) {
+          charGraphicContainer.style.transform = 'scaleX(1)';
+        }
+        lastX = pt.x;
+
+        if (currentFrame % 4 === 0) {
+          sound.playChickenStep();
+        }
+
+        currentFrame++;
+      }, 55);
+    }
+
+    function drawStroke() {
+      if (!ctx || linePoints.length < 2) return;
+      const rect = gridMazeWrapper.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      ctx.beginPath();
+      ctx.moveTo(linePoints[0].x, linePoints[0].y);
+      for (let i = 1; i < linePoints.length; i++) {
+        ctx.lineTo(linePoints[i].x, linePoints[i].y);
+      }
+
+      ctx.strokeStyle = drawColors[currentColorIndex].value;
+      ctx.lineWidth = Math.max(8, rect.width / 32);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = drawColors[currentColorIndex].value;
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+    }
+
+    // Attach pointer/mouse/touch events to canvas
+    drawingCanvas.addEventListener('mousedown', startDrawing);
+    window.addEventListener('mousemove', drawMovement);
+    window.addEventListener('mouseup', stopDrawing);
+
+    drawingCanvas.addEventListener('touchstart', (e) => {
+      if (currentLevel === 3) {
+        e.preventDefault();
+        startDrawing(e);
+      }
+    }, { passive: false });
+
+    drawingCanvas.addEventListener('touchmove', (e) => {
+      if (currentLevel === 3 && isDrawing) {
+        e.preventDefault();
+        drawMovement(e);
+      }
+    }, { passive: false });
+
+    drawingCanvas.addEventListener('touchend', (e) => {
+      if (currentLevel === 3 && isDrawing) {
+        e.preventDefault();
+        stopDrawing();
+      }
+    }, { passive: false });
+
+    drawingCanvas.addEventListener('touchcancel', (e) => {
+      if (currentLevel === 3 && isDrawing) {
+        e.preventDefault();
+        stopDrawing();
+      }
+    }, { passive: false });
+
+    btnClearCanvas.addEventListener('click', () => {
+      if (isChickenRunning) return;
+      clearCanvasOnly();
+      const cfg = levels[3];
+      playerPos = { r: cfg.start.r, c: cfg.start.c };
+      updateCharacterVisual(playerPos.r, playerPos.c);
+      charGraphicContainer.style.transform = 'scaleX(1)';
+      sound.playWallBump();
+    });
+
+    btnColorSwitch.addEventListener('click', () => {
+      currentColorIndex = (currentColorIndex + 1) % drawColors.length;
+      currentColorName.textContent = `Warna: ${drawColors[currentColorIndex].name}`;
+      if (linePoints.length > 0) drawStroke();
+    });
+
+    window.addEventListener('resize', () => {
+      if (currentLevel === 3) initCanvas();
+    });
+
+    // --- 7. COMPLETION & REWARDS ---
+    function handleLevelComplete() {
+      if (isLevelFinished) return;
+      isLevelFinished = true;
+      sound.playSuccessFanfare();
+
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 85, spread: 80, origin: { y: 0.6 } });
+      }
+
+      if (currentLevel === 1) {
+        totalScore = Math.max(totalScore, 35);
+        scoreDisplay.textContent = totalScore;
+        showSuccessModal(
+          "HOREEE! Sapi Berhasil! 🐄🌾",
+          "Sapi manis berhasil menemukan jalan keluar dan menikmati rumput segar yang lezat!",
+          "+35 Poin Berhasil Dikumpulkan!",
+          "Lanjut ke Level 2 🐱"
+        );
+      } else if (currentLevel === 2) {
+        totalScore = Math.max(totalScore, 70);
+        scoreDisplay.textContent = totalScore;
+        showSuccessModal(
+          "HOREEE! Kucing Senang! 🐱🐟",
+          "Hebat! Kucing berhasil mengikuti jejak kaki dan menikmati semangkuk ikan segar!",
+          "+35 Poin Berhasil Dikumpulkan!",
+          "Lanjut ke Level 3 🐔 (Tarik Garis)"
+        );
+      } else if (currentLevel === 3) {
+        totalScore = 100;
+        scoreDisplay.textContent = 100;
+        showFinalCelebration();
+      }
+    }
+
+    function showSuccessModal(title, desc, points, btnText) {
+      document.getElementById('modalLevelTitle').textContent = title;
+      document.getElementById('modalLevelDesc').textContent = desc;
+      document.getElementById('modalLevelScoreBonus').textContent = points;
+      document.getElementById('btnNextLevelText').textContent = btnText;
+      document.getElementById('modalLevelSuccess').classList.remove('hidden');
+    }
+
+    document.getElementById('btnNextLevelModal').addEventListener('click', () => {
+      document.getElementById('modalLevelSuccess').classList.add('hidden');
+      if (currentLevel < 3) {
+        setupLevel(currentLevel + 1);
+      }
+    });
+
+    function showFinalCelebration() {
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 } });
+      }
+
+      const finishedAt = new Date().toISOString();
+      const elapsed = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+      const m = Math.floor(elapsed / 60);
+      const s = elapsed % 60;
+      const durStr = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')} Menit`;
+
+      document.getElementById('finalPlayerName').textContent = playerName;
+      document.getElementById('finalDurationText').textContent = durStr;
+
+      const session = {
+        playerName: playerName,
+        gameName: gameName,
+        startedAt: new Date(startTime).toISOString(),
+        finishedAt: finishedAt,
+        duration: elapsed,
+        score: 100
+      };
+
+      localStorage.setItem(
+        'currentGameSession',
+        JSON.stringify(session)
+      );
+      localStorage.setItem('game5_last_result', JSON.stringify(session));
+
+      console.log('Nama pemain:', session.playerName);
+      console.log('Game yang dipilih:', session.gameName);
+      console.log('Waktu mulai:', session.startedAt);
+      console.log('Waktu selesai:', session.finishedAt);
+      console.log('Durasi (detik):', session.duration);
+      console.log('Skor:', session.score);
+
+      if (window.saveGameToFirebase) {
+        window.saveGameToFirebase(session);
+      }
+
+      document.getElementById('modalGameComplete').classList.remove('hidden');
+    }
+
+    document.getElementById('btnRestartGame').addEventListener('click', () => {
+      document.getElementById('modalGameComplete').classList.add('hidden');
+      totalScore = 0;
+      scoreDisplay.textContent = totalScore;
+
+      startTime = Date.now();
+      const restartedSession = {
+        playerName: playerName,
+        gameName: gameName,
+        startedAt: new Date(startTime).toISOString()
+      };
+      localStorage.setItem('currentGameSession', JSON.stringify(restartedSession));
+
+      console.log('Nama pemain:', playerName);
+      console.log('Game yang dipilih:', gameName);
+      console.log('Waktu mulai:', restartedSession.startedAt);
+
+      setupLevel(1);
+    });
+
+    // --- 8. NAVIGATION CONTROLLER ---
+    function updateNavUI() {
+      btnPrev.disabled = (currentLevel === 1);
+      btnNext.disabled = (currentLevel === 3);
+
+      // Dots Indicator
+      [1, 2, 3].forEach(i => {
+        const dot = document.getElementById(`dot-${i}`);
+        if (i === currentLevel) {
+          dot.className = "w-3.5 h-3.5 rounded-full bg-teal-500 ring-4 ring-teal-200 transition-all scale-110";
+        } else if (i < currentLevel) {
+          dot.className = "w-3.5 h-3.5 rounded-full bg-teal-500 transition-all";
+        } else {
+          dot.className = "w-3.5 h-3.5 rounded-full bg-slate-200 transition-all";
+        }
+      });
+
+      if (currentLevel === 1) {
+        levelBadge.textContent = "Level 1: Sapi";
+        stepCounterBadge.textContent = "Langkah 1 dari 3";
+      } else if (currentLevel === 2) {
+        levelBadge.textContent = "Level 2: Kucing (Jejak Kaki)";
+        stepCounterBadge.textContent = "Langkah 2 dari 3";
+      } else if (currentLevel === 3) {
+        levelBadge.textContent = "Level 3: Ayam (Tarik Garis)";
+        stepCounterBadge.textContent = "Langkah 3 dari 3";
+      }
+    }
+
+    btnPrev.addEventListener('click', () => {
+      if (currentLevel > 1) setupLevel(currentLevel - 1);
+    });
+
+    btnNext.addEventListener('click', () => {
+      if (currentLevel < 3) setupLevel(currentLevel + 1);
+    });
+
+    btnReset.addEventListener('click', () => {
+      const cfg = levels[currentLevel];
+      playerPos = { r: cfg.start.r, c: cfg.start.c };
+      charGraphicContainer.style.transform = 'scaleX(1)';
+      charGraphicContainer.classList.remove('char-walking');
+      charGraphicContainer.classList.add('char-idle');
+      updateCharacterVisual(playerPos.r, playerPos.c);
+      if (cfg.mode === 'draw') {
+        clearCanvasOnly();
+      }
+      isChickenRunning = false;
+      isMoving = false;
+      isLevelFinished = false;
+    });
+
+    function setupLevel(lvl) {
+      currentLevel = lvl;
+      const cfg = levels[lvl];
+      playerPos = { r: cfg.start.r, c: cfg.start.c };
+
+      levelTitleText.textContent = cfg.title;
+      instructionText.textContent = cfg.instruction;
+
+      updateNavUI();
+      renderMazeGrid();
+    }
+
+    // --- 9. AUDIO TOGGLE ---
+    const btnMusic = document.getElementById('btnMusic');
+    btnMusic.addEventListener('click', () => {
+      const active = sound.toggleMusic();
+      const icon = document.getElementById('musicIcon');
+      const text = document.getElementById('musicText');
+
+      if (active) {
+        icon.textContent = '♫';
+        text.textContent = 'Musik Nyala';
+        btnMusic.classList.remove('bg-slate-400', 'hover:bg-slate-500');
+        btnMusic.classList.add('bg-teal-500', 'hover:bg-teal-600');
+      } else {
+        icon.textContent = '🔇';
+        text.textContent = 'Musik Mati';
+        btnMusic.classList.remove('bg-teal-500', 'hover:bg-teal-600');
+        btnMusic.classList.add('bg-slate-400', 'hover:bg-slate-500');
+      }
+    });
+
+    // Auto-unlock WebAudio on initial kid interaction
+    ['click', 'touchstart', 'keydown'].forEach(evt => {
+      window.addEventListener(evt, () => {
+        sound.init();
+        if (!sound.isMusicMuted && !sound.bgInterval) sound.startBGM();
+      }, { once: true });
+    });
+
+    // Start App
+    document.addEventListener('DOMContentLoaded', () => {
+      setupLevel(1);
+    });
+  </script>
+</body>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc
+    } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBpNQloPwRRwSCDf2K6wMrwRc4W9dV8TXU",
+      authDomain: "gameedukasi-f7c5a.firebaseapp.com",
+      projectId: "gameedukasi-f7c5a",
+      storageBucket: "gameedukasi-f7c5a.firebasestorage.app",
+      messagingSenderId: "342308052786",
+      appId: "1:342308052786:web:d8f63eac16d94d00c1012b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.saveGameToFirebase = async function (session) {
+      try {
+        await addDoc(collection(db, "gameResults"), {
+          playerName: session.playerName || "Teman",
+          gameName: session.gameName || "Mencari Jejak - Labirin",
+          startedAt: session.startedAt || null,
+          finishedAt: session.finishedAt || null,
+          duration: session.duration || 0,
+          score: session.score || 0
+        });
+
+        console.log("Data permainan berhasil disimpan ke Firebase!");
+      } catch (error) {
+        console.error("Gagal menyimpan ke Firebase:", error);
+      }
+    };
+
+    console.log("Firebase berhasil terhubung!");
+  </script>
+</body></html>
